@@ -30,7 +30,7 @@ A working two-node configuration for DeepSeek's 1017 update, with the measured r
 | Setting | Value | Why |
 |---|---|---|
 | `TF_COMMIT` | `07aa02585f64` | the engine build we measured |
-| `CONTEXT` | `262144` | see the memory note below; the engine's KV pool is context-driven |
+| `CONTEXT` | `262144` | a conservative value we shipped for a stable first lane; the engine supports the full 1M window. See the memory note |
 | `MEM_FLOOR_GIB` | `0` | see the memory note below |
 | `PARALLEL` | `4` | four concurrent requests |
 | `MTP_DRAFTS` | `5` | DSpark draft depth |
@@ -88,18 +88,23 @@ pair the post-boot `MemAvailable` is only 2-3 GiB, so with any floor above that 
 the process already holds, and the first transient allocation fails with `CUDA out of memory ... Tried to allocate
 2.00 MiB` while several GiB look free. We hit that three times: at floors of 4, 8 and 16 GiB.
 
-What worked: `MEM_FLOOR_GIB=0` (no self-ceiling; a real out-of-memory then fails one request instead of the lane)
-plus `CONTEXT=262144`. The KV pool is sized from the context (~1.4 KiB per position here), so a 1M window costs
-about 3 GiB more and leaves no room. If you want a 1M window, give the pair more headroom first (no desktop
-session, nothing else on the nodes) and raise `CONTEXT` only after a long-prompt run holds `MemAvailable` above
-the floor you choose.
+What worked: `MEM_FLOOR_GIB=0` (no self-ceiling; a real out-of-memory then fails one request instead of the lane).
+We also set `CONTEXT=262144` at that point, as the safe value for the window we had; that is a choice, not a limit.
+The engine takes the full 1,048,576 positions, and the upstream two-node recipe ships that value.
+
+The KV pool is sized from the context at about 1.4 KiB per position, so a 1M window costs roughly 2.5 GiB more than
+262K. With the ceiling off that memory comes straight out of the free device memory (about 3 GiB at idle on our
+pair), so 1M is tight but plausible. It is untested here: our 1M runs are the ones that failed, but they failed
+under a floor, before we found the ceiling trap. If you want 1M, raise `CONTEXT` and hold it with a long-prompt run
+that reads `MemAvailable` afterwards; drop back to 262K if it does not hold.
 
 `host_tuning.sh` is not optional on this class of node: without it the kernel swaps and compacts under a long
 prefill and the same request takes 10-30 % longer.
 
 ## What this is not
 
-- Not a 1M-context recipe as shipped here (262,144 positions, see above).
+- Shipped at 262,144 positions. The engine supports 1M; we have not verified 1M on this configuration (see the
+  memory note).
 - Not measured on your hardware. The rows above are one pair, one day, one run each.
 - The vision tower is on; image requests work but are not in the rows.
 
