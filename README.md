@@ -1,5 +1,7 @@
 # DeepSeek-V4.1-Flash-1017 (EXL3 2.9 bpw) on two DGX Spark (GB10), TP = 2
 
+> **Archived.** This configuration (a third-party 2.9 bpw quant on the TensorFold 0.6.6 line) is superseded by [bertholomus/deepseek-v4.1-tensorfold-tp2-2xgb10](https://github.com/bertholomus/deepseek-v4.1-tensorfold-tp2-2xgb10). This repository is read-only.
+
 A working two-node configuration for DeepSeek's 1017 update, with the measured rows from our own pair.
 
 > **Weights:** [LibertAIDAI/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw](https://huggingface.co/LibertAIDAI/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw)
